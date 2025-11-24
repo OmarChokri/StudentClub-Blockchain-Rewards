@@ -1,9 +1,15 @@
-require('dotenv').config();
-const { ethers } = require('ethers');
+import dotenv from "dotenv";
+import { ethers } from "ethers";
+
+dotenv.config();
+
+const { RPC_URL, PRIVATE_KEY, CONTRACT_ADDRESS } = process.env;
+
+console.log("Using contract at:", CONTRACT_ADDRESS);
 
 // Provider + wallet
-const provider = new ethers.JsonRpcProvider(process.env.GANACHE_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
 // ABI correcte pour TON contrat
 const contractABI = [
@@ -21,49 +27,31 @@ const contractABI = [
 ];
 
 // Contract instance
-const contract = new ethers.Contract(
-    process.env.CONTRACT_ADDRESS,
-    contractABI,
-    wallet
-);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, wallet);
 
-// --- FUNCTIONS -----------------------------------------------------
+// --- SERVICE EXPORTÉ ---
+export const blockchain = {
 
-async function givePoints(toAddress, amount, reason) {
-    const tx = await contract.givePoints(toAddress, amount, reason);
-    await tx.wait();
-    console.log(`Points donnés à ${toAddress}`);
-}
+    async givePoints(toAddress, amount, reason) {
+        const tx = await contract.givePoints(toAddress, amount, reason);
+        await tx.wait();
+        console.log(`Points donnés à ${toAddress}`);
+    },
 
-async function transferPoints(toAddress, amount) {
-    const tx = await contract.transferPoints(toAddress, amount);
-    await tx.wait();
-    console.log(`Transfert effectué`);
-}
+    async transferPoints(toAddress, amount) {
+        const tx = await contract.transferPoints(toAddress, amount);
+        await tx.wait();
+        console.log(`Transfert effectué`);
+    },
 
-async function usePoints(amount, reason) {
-    const tx = await contract.usePoints(amount, reason);
-    await tx.wait();
-    console.log(`Points brûlés`);
-}
+    async usePoints(amount, reason) {
+        const tx = await contract.usePoints(amount, reason);
+        await tx.wait();
+        console.log(`Points brûlés`);
+    },
 
-async function getBalance(address) {
-    const balance = await contract.getBalance(address);
-    console.log(`Solde : ${balance}`);
-    return balance;
-}
-
-// --- MAIN EXECUTION -------------------------------------------------
-
-async function main() {
-    console.log("Owner:", await contract.owner());
-
-    const testAddress = "0x0000000000000000000000000000000000000001";
-
-    await givePoints(testAddress, 100, "Test points");
-
-    await getBalance(testAddress);
-}
-
-// Lancer main()
-main().catch(err => console.error(err));
+    async getBalance(address) {
+        const balance = await contract.getBalance(address);
+        return balance;
+    }
+};
