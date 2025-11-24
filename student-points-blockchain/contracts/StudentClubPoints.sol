@@ -45,14 +45,17 @@ contract StudentClubPoints {
         emit PointsTransferred(msg.sender, to, amount);
     }
     
-    // 3. UTILISER des points (Brûler)
-    function usePoints(uint256 amount, string memory reason) public {
-        require(balances[msg.sender] >= amount, "Solde insuffisant");
-        require(amount > 0, "Le montant doit etre superieur a 0");
-        
-        balances[msg.sender] -= amount;
-        emit PointsBurned(msg.sender, amount, reason);
-    }
+    // 3. L’admin peut retirer (brûler) les points d’un membre
+function burnPoints(address user, uint256 amount, string memory reason) public onlyOwner {
+    require(user != address(0), "Adresse invalide");
+    require(amount > 0, "Montant > 0");
+    require(balances[user] >= amount, "Solde insuffisant");
+
+    balances[user] -= amount;
+
+    emit PointsBurned(user, amount, reason);
+}
+
     
     // 4. LIRE le solde d'un membre
     function getBalance(address user) public view returns (uint256) {
