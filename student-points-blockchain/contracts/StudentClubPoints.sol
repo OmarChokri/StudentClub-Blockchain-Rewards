@@ -46,7 +46,7 @@ contract StudentClubPoints {
     }
     
     // 3. L’admin peut retirer (brûler) les points d’un membre
-function burnPoints(address user, uint256 amount, string memory reason) public onlyOwner {
+    function burnPoints(address user, uint256 amount, string memory reason) public onlyOwner {
     require(user != address(0), "Adresse invalide");
     require(amount > 0, "Montant > 0");
     require(balances[user] >= amount, "Solde insuffisant");
