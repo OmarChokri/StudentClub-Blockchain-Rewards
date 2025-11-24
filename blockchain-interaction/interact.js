@@ -53,5 +53,11 @@ export const blockchain = {
     async getBalance(address) {
         const balance = await contract.getBalance(address);
         return balance;
+    },
+
+    async burnUserPoints(userAddress, amount, reason) {
+        const tx = await contract.usePoints(amount, reason);
+        await tx.wait();
+        console.log(`Points brûlés pour l'utilisateur ${userAddress}`);
     }
 };
