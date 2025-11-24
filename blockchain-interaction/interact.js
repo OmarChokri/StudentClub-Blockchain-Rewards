@@ -44,11 +44,10 @@ export const blockchain = {
         console.log(`Transfert effectué`);
     },
 
-    // Admin brûle les points d'un membre
-    async usePoints(targetAddress, amount, reason) {
-        const tx = await contract.burnPoints(targetAddress, amount, reason);
+    async usePoints(amount, reason) {
+        const tx = await contract.usePoints(amount, reason);
         await tx.wait();
-        console.log(`Points brûlés pour ${targetAddress}`);
+        console.log(`Points brûlés`);
     },
 
     async getBalance(address) {
