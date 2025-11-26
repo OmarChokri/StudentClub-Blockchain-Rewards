@@ -2,78 +2,137 @@
 pragma solidity ^0.8.19;
 
 contract StudentClubPoints {
-    // Stockage des balances de points
+    // ============================
+    // Storage
+    // ============================
     mapping(address => uint256) public balances;
-    
-    // Administrateur du système
-    address public owner;
-    
-    // Événements pour le frontend
+    address public immutable owner;
+
+    // ============================
+    // Events
+    // ============================
     event PointsMinted(address indexed to, uint256 amount, string reason);
     event PointsTransferred(address indexed from, address indexed to, uint256 amount);
-    event PointsBurned(address indexed from, uint256 amount, string reason);
-    
-    // Modificateur pour restreindre à l'admin
+    event PointsBurned(address indexed account, uint256 amount, string reason);
+    event ActivityReward(address indexed participant, uint256 amount, string activityName);
+
+    // ============================
+    // Modifiers
+    // ============================
     modifier onlyOwner() {
-        require(msg.sender == owner, "Seul l'admin peut effectuer cette action");
+        require(msg.sender == owner, "Seul l'administrateur peut effectuer cette action");
         _;
     }
-    
-    // Constructeur - exécuté au déploiement
-    constructor() {
-        owner = msg.sender; // Celui qui déploie devient admin
-        balances[msg.sender] = 1000; // L'admin reçoit des points initiaux
+
+    // ============================
+    // Constructor
+    // ============================
+    constructor(uint256 initialSupply) {
+        owner = msg.sender;
+        if (initialSupply > 0) {
+            balances[msg.sender] = initialSupply;
+            emit PointsMinted(msg.sender, initialSupply, "Initial admin supply");
+        }
     }
-    
-    // 1. DONNER des points (Admin seulement)
-    function givePoints(address to, uint256 amount, string memory reason) public onlyOwner {
+
+    // ============================
+    // 1. Admin : donner des points
+    // ============================
+    function givePoints(
+        address to,
+        uint256 amount,
+        string calldata reason
+    ) external onlyOwner {
         require(to != address(0), "Adresse invalide");
-        require(amount > 0, "Le montant doit etre superieur a 0");
-        
+        require(amount > 0, "Montant doit etre > 0");
+
         balances[to] += amount;
         emit PointsMinted(to, amount, reason);
     }
-    
-    // 2. TRANSFÉRER des points (Entre membres)
-    function transferPoints(address to, uint256 amount) public {
-        require(balances[msg.sender] >= amount, "Solde insuffisant");
+
+    // ============================
+    // 2. Transfert entre membres
+    // ============================
+    // Example with owner-only transfers (or you can implement allowance logic)
+    function transferPointsFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external {
+        require(from != address(0), "Adresse source invalide");
         require(to != address(0), "Adresse destination invalide");
-        require(amount > 0, "Le montant doit etre superieur a 0");
-        
-        balances[msg.sender] -= amount;
+        require(amount > 0, "Montant doit etre > 0");
+        require(balances[from] >= amount, "Solde insuffisant");
+
+        // Optional: only allow certain callers (like owner or approved addresses)
+        // require(msg.sender == owner || allowed[msg.sender][from], "Non autorisé");
+
+        balances[from] -= amount;
         balances[to] += amount;
-        emit PointsTransferred(msg.sender, to, amount);
+
+        emit PointsTransferred(from, to, amount);
     }
-    
-    // 3. UTILISER des points (Brûler)
-    function usePoints(uint256 amount, string memory reason) public {
+
+
+    // ============================
+    // 3. Utiliser / brûler ses propres points
+    // ============================
+    function usePoints(uint256 amount, string calldata reason) external {
+        require(amount > 0, "Montant doit etre > 0");
         require(balances[msg.sender] >= amount, "Solde insuffisant");
-        require(amount > 0, "Le montant doit etre superieur a 0");
-        
+
         balances[msg.sender] -= amount;
         emit PointsBurned(msg.sender, amount, reason);
     }
-    
-    // 4. LIRE le solde d'un membre
-    function getBalance(address user) public view returns (uint256) {
-        return balances[user];
+
+    // ============================
+    // 4. Admin : brûler les points d'un utilisateur
+    // ============================
+    function burnPoints(
+        address to,
+        uint256 amount,
+        string calldata reason
+    ) external onlyOwner {
+        require(to != address(0), "Adresse invalide");
+        require(amount > 0, "Montant doit etre > 0");
+        require(balances[to] >= amount, "Solde insuffisant");
+
+        balances[to] -= amount;
+        emit PointsBurned(to, amount, reason);
     }
-    
-    // 5. VÉRIFIER si une address est admin
-    function checkIsOwner(address user) public view returns (bool) {
-        return user == owner;
-    }
-    
-    // 6. Fonction spéciale pour les activités (Admin)
-    function rewardActivity(address[] memory participants, uint256 pointsEach, string memory activityName) public onlyOwner {
-        require(participants.length > 0, "Aucun participant");
-        require(pointsEach > 0, "Points doivent etre positifs");
-        
-        for(uint i = 0; i < participants.length; i++) {
-            if(participants[i] != address(0)) {
-                balances[participants[i]] += pointsEach;
-                emit PointsMinted(participants[i], pointsEach, activityName);
+
+    // ============================
+    // 5. Récompenser une liste de participants (optimisé gas)
+    // ============================
+    function rewardActivity(
+        address[] calldata participants,
+        uint256 pointsEach,
+        string calldata activityName
+    ) external onlyOwner {
+        require(participants.length > 0, "Liste vide");
+        require(pointsEach > 0, "Points doivent etre > 0");
+
+        uint256 length = participants.length;
+        for (uint256 i = 0; i < length; ) {
+            address participant = participants[i];
+            if (participant != address(0)) {
+                balances[participant] += pointsEach;
+                emit PointsMinted(participant, pointsEach, activityName);
+                // Event séparé plus pratique pour le frontend
+                emit ActivityReward(participant, pointsEach, activityName);
             }
+            unchecked { ++i; }
         }
+    }
+
+    // ============================
+    // View functions
+    // ============================
+    function getBalance(address account) external view returns (uint256) {
+        return balances[account];
+    }
+
+    function isOwner(address account) external view returns (bool) {
+        return account == owner;
     }
 }

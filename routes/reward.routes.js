@@ -7,7 +7,13 @@ const router = Router();
 router.use(AuthService.authenticate);
 
 router.post("/add", AuthService.authorizeAdmin, RewardController.add);
+
 router.get("/", RewardController.getAll);
-router.post("/redeem", RewardController.redeem);
+
+router.get("/:id", RewardController.getById);
+
+router.put("/:id", AuthService.authorizeAdmin, RewardController.update);
+
+router.delete("/:id", AuthService.authorizeAdmin, RewardController.delete);
 
 export default router;

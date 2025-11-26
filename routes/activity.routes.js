@@ -12,6 +12,5 @@ router.get("/:id", ActivityController.getOne);
 router.post("/add", ActivityController.add);
 router.put("/:id", ActivityController.update);
 router.delete("/:id", ActivityController.delete);
-router.post("/assign", ActivityController.assignActivity);
 
 export default router;

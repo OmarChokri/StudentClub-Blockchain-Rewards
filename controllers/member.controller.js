@@ -8,6 +8,9 @@ export class MemberController {
   static async getMemberById(req, res) {
     res.json(await MemberService.getMemberById(req.params.id));
   }
+  static async getMemberByEmail(req, res) {
+    res.json(await MemberService.getMemberByEmail(req.params.email));
+  }
 
   static async addMember(req, res) {
     const result = await MemberService.addMember(req.body);

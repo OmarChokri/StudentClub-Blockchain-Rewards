@@ -1,8 +1,11 @@
 import { User } from "../models/user.model.js";
+import bcrypt from "bcrypt";
 
 export class MemberService {
   static async addMember({ username, role,password,email,walletAddress, }) {
-    return await User.create({ username,role, password, email, joinedAt: new Date(),walletAddress  });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    return await User.create({ username,role, password: hashedPassword, email, joinedAt: new Date(),walletAddress  });
   }
 
   static async getMembers() {
@@ -11,6 +14,10 @@ export class MemberService {
 
   static async getMemberById(id) {
     return await User.findById(id);
+  }
+
+  static async getMemberByEmail(email) {
+    return await User.findOne({ email });
   }
 
   static async updateMember(id, data) {

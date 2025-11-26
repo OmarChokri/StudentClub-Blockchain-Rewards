@@ -1,120 +1,53 @@
-import { Point } from "../models/point.model.js";
-import { PointHistory } from "../models/pointHistory.model.js";
+// services/point.service.js
 import { User } from "../models/user.model.js";
 import { blockchain } from "../blockchain-interaction/interact.js";
 
 export class PointsService {
 
-  // ADD POINTS
-  static async addPoints({ userId, amount, reason, activityId }) {
+  static async addPoints({ userId, amount, reason, activityId = null }) {
+    if (!userId || amount <= 0) throw new Error("Paramètres invalides");
 
-    const user = await User.findById(userId);
-    if (!user) throw new Error("User not found");
+    const user = await User.findById(userId).lean();
+    if (!user) throw new Error("Utilisateur introuvable");
+    if (!user.walletAddress) throw new Error("Adresse wallet manquante");
 
-    // 1. BLOCKCHAIN TX
-    await blockchain.givePoints(user.walletAddress, amount, reason);
+    const receipt = await blockchain.givePoints(user.walletAddress, amount, reason);
 
-    // 2. LOCAL DB UPDATE
-    let point = await Point.findOne({ userId });
-
-    if (!point) {
-      point = new Point({ userId, amount: 0 });
-    }
-
-    point.amount += amount;
-    await point.save();
-
-    // 3. HISTORY
-    await PointHistory.create({
+    return {
+      success: true,
       userId,
-      type: "add",
       amount,
-      activityId,
       reason,
-      date: new Date(),
-    });
-
-    return point;
+      txHash: receipt.hash,
+      newBalance: await blockchain.getBalance(user.walletAddress),
+    };
   }
 
-  // TRANSFER POINTS
-  static async transferPoints({ fromUser, toUser, amount }) {
+  static async adminBurnPoints({ userId, amount, reason }) {
+    const user = await User.findById(userId).lean();
+    if (!user || !user.walletAddress) throw new Error("Utilisateur ou wallet introuvable");
 
-    const senderUser = await User.findById(fromUser);
-    const receiverUser = await User.findById(toUser);
+    const currentBalance = await blockchain.getBalance(user.walletAddress);
+    if (currentBalance < amount) throw new Error("Solde insuffisant");
 
-    if (!senderUser || !receiverUser)
-      throw new Error("User not found");
+    const receipt = await blockchain.burnUserPoints(user.walletAddress, amount, reason);
 
-    // 1. BLOCKCHAIN TX
-    await blockchain.transferPoints(receiverUser.walletAddress, amount);
-
-    // 2. LOCAL DB
-    const sender = await Point.findOne({ userId: fromUser });
-    if (!sender || sender.amount < amount)
-      throw new Error("Not enough balance");
-
-    const receiver = await Point.findOne({ userId: toUser }) || new Point({ userId: toUser, amount: 0 });
-
-    sender.amount -= amount;
-    receiver.amount += amount;
-
-    await sender.save();
-    await receiver.save();
-
-    // 3. HISTORY
-    await PointHistory.create({
-      userId: toUser,
-      type: "transfer",
-      amount,
-      fromUser,
-      toUser,
-      date: new Date(),
-    });
-
-    return { sender, receiver };
-  }
-
-  // BURN POINTS (redeem reward)
-  static async burnPoints({ userId, amount, rewardId }) {
-
-    const user = await User.findById(userId);
-    if (!user) throw new Error("User not found");
-
-    // 1. BLOCKCHAIN TX
-    await blockchain.usePoints(amount, "reward redeem");
-
-    // 2. UPDATE LOCAL DB
-    const userPoints = await Point.findOne({ userId });
-    if (!userPoints || userPoints.amount < amount)
-      throw new Error("Not enough points");
-
-    userPoints.amount -= amount;
-    await userPoints.save();
-
-    // 3. HISTORY
-    await PointHistory.create({
+    return {
+      success: true,
       userId,
-      type: "burn",
       amount,
-      rewardId,
-      date: new Date(),
-    });
-
-    return userPoints;
+      reason,
+      txHash: receipt.hash,
+      newBalance: await blockchain.getBalance(user.walletAddress),
+    };
   }
 
-  // GET BALANCE (BLOCKCHAIN)
   static async getBalance(userId) {
-    const user = await User.findById(userId);
-    if (!user) throw new Error("User not found");
+    const user = await User.findById(userId).lean();
+    if (!user || !user.walletAddress) throw new Error("Utilisateur ou wallet introuvable");
 
     const balance = await blockchain.getBalance(user.walletAddress);
-
-    return balance.toString();
-  }
-
-  static async getHistory(userId) {
-    return await PointHistory.find({ userId }).sort({ date: -1 });
+    return Number(balance);
+    
   }
 }

@@ -7,6 +7,7 @@ static async signup({ email, password, username, role, walletAddress }) {
 
   const exists = await User.findOne({ email });
   if (exists) throw new Error("Email already used");
+  console.log("Wallet Address during signup:", email, password, username, role, walletAddress);
     if (!walletAddress) throw new Error("Wallet address required");
   const existsWallet = await User.findOne({ walletAddress });
     if (existsWallet) throw new Error("Wallet address already linked to a user");

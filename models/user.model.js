@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ["admin", "member"], default: "member" },
   walletAddress: { 
     type: String, 
-    required: true,       // 🔥 Obligatoire car on l’utilise avec le smart contract
+    required: true,
     unique: true 
   },
     createdAt: { type: Date, default: Date.now },
